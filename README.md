@@ -8,11 +8,15 @@ A Python package to reduce the memory usage of pandas DataFrames without changin
 pip install a-pandas-ex-less-memory-more-speed
 ```
 
-## Usage
-
 ```python
-
+from optimize_df import pd_add_less_memory_more_speed
+pd_add_less_memory_more_speed()
+import pandas as pd
+df = pd.read_csv(    "https://github.com/pandas-dev/pandas/raw/main/doc/data/titanic.csv",)
+df.ds_reduce_memory_size()
 ```
+
+## Usage
 
 ```python
 df = pd.read_csv(    "https://github.com/pandas-dev/pandas/raw/main/doc/data/titanic.csv",)
