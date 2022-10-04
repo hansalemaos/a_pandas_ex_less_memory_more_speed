@@ -662,18 +662,25 @@ dtype: object
             only_string = stringcheck_df.empty
             if only_string is True:
                 df[col] = df[col].astype("string")
+                try:
+                    df.loc[df[col].str.contains('<NA>',regex=False), col] = pd.NA
+                except Exception as F:
+                    pass
 
-                if categorylimit > 0:
-                    if len(df) / len(df[col].unique()) >= categorylimit:
-                        df[col] = df[col].astype("category")
-                        if verbose:
-                            print(f"df.{col}: Using dtype: category")
+                try:
+                    if categorylimit > 0:
+                        if len(df) / len(df[col].unique()) >= categorylimit:
+                            df[col] = df[col].astype("category")
+                            if verbose:
+                                print(f"df.{col}: Using dtype: category")
+                        else:
+                            if verbose:
+                                print(f"df.{col}: Using dtype: string")
                     else:
                         if verbose:
                             print(f"df.{col}: Using dtype: string")
-                else:
-                    if verbose:
-                        print(f"df.{col}: Using dtype: string")
+                except Exception as Fehler:
+                    pass
 
     if verbose:
         print("█████████████████████████████")
