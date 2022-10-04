@@ -82,8 +82,8 @@ def optimize_dtypes(
     include_0_len_string_in_pd_na: bool = False,
     convert_float: bool = True,
     check_float_difference: bool = True,
-    float_tolerance_negative: float = -0.05,
-    float_tolerance_positive: float = 0.05,
+    float_tolerance_negative: float = 0,
+    float_tolerance_positive: float = 0,
 ) -> Union[pd.Series, pd.DataFrame]:
     """
 
@@ -442,9 +442,9 @@ dtype: object
             3222.330078 - 3222.330000 = 0.000078 is fine for you
 
             Ignored if convert_float=False
-            (default= -0.05)
+            (default= 0)
 
-        float_tolerance_positive: float = 0.05,
+        float_tolerance_positive: float = 0,
             The positive tolerance you can live with
             3222.340078 - 3222.330000 = 0.010078 is fine for you
              Ignored if convert_float=False
@@ -536,8 +536,11 @@ dtype: object
 
                 try:
                     converted_successfully = False
+                    if float_tolerance_negative == 0 and float_tolerance_positive == 0:
+                        df[col] = df[col].astype(np.float64)
+                        converted_successfully = True
 
-                    if mn > np.finfo(np.float16).min and mx < np.finfo(np.float16).max:
+                    if mn > np.finfo(np.float16).min and mx < np.finfo(np.float16).max and converted_successfully is False:
                         df, converted_successfully = check_floats(
                             df=df,
                             col=col,
