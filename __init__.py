@@ -1,6 +1,8 @@
 import operator
 import re
 from typing import Union
+
+import regex
 from pandas.core.base import PandasObject
 import numpy as np
 import pandas as pd
@@ -697,5 +699,64 @@ dtype: object
     return df
 
 
+def optimize_only_int(dframe,verbose=True):
+    df=dframe.copy()
+    for col in df.columns:
+        if regex.search(r'(?:[iI]nt)|(?:object)',str(df[col].dtype)) is None:
+            continue
+        if regex.search(r'^\d+$',str(df[col][0])) is None:
+            continue
+        try:
+            mx = df[col].max()
+            mn = df[col].min()
+
+            if mn >= 0:
+                if mx < 255:
+                    df[col] = df[col].astype(np.uint8)
+                    if verbose:
+                        print(f"df.{col}: Using dtype: np.uint8")
+                elif mx < 65535:
+                    df[col] = df[col].astype(np.uint16)
+                    if verbose:
+                        print(f"df.{col}: Using dtype: np.uint16")
+                elif mx < 4294967295:
+                    df[col] = df[col].astype(np.uint32)
+                    if verbose:
+                        print(f"df.{col}: Using dtype: np.uint32")
+                elif mx >= 4294967295:
+                    df[col] = df[col].astype(np.uint64)
+                    if verbose:
+                        print(f"df.{col}: Using dtype: np.uint64")
+            else:
+                if mn > np.iinfo(np.int8).min and mx < np.iinfo(np.int8).max:
+                    df[col] = df[col].astype(np.int8)
+                    if verbose:
+                        print(f"df.{col}: Using dtype: np.int8")
+                elif (
+                        mn > np.iinfo(np.int16).min and mx < np.iinfo(np.int16).max
+                ):
+                    df[col] = df[col].astype(np.int16)
+                    if verbose:
+                        print(f"df.{col}: Using dtype: np.int16")
+                elif (
+                        mn > np.iinfo(np.int32).min and mx < np.iinfo(np.int32).max
+                ):
+                    df[col] = df[col].astype(np.int32)
+                    if verbose:
+                        print(f"df.{col}: Using dtype: np.int32")
+                elif (
+                        mn > np.iinfo(np.int64).min and mx < np.iinfo(np.int64).max
+                ):
+                    df[col] = df[col].astype(np.int64)
+                    if verbose:
+                        print(f"df.{col}: Using dtype: np.int64")
+        except Exception as ba:
+            if verbose:
+                print(f"df.{col}: Using dtype: Int64")
+            df[col] = df[col].astype("Int64")
+    return df
+
+
 def pd_add_less_memory_more_speed():
     PandasObject.ds_reduce_memory_size = optimize_dtypes
+    PandasObject.ds_optimize_int = optimize_only_int
