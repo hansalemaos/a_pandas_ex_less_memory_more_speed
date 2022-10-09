@@ -1,12 +1,12 @@
 import operator
 import re
 from typing import Union
-
+import ast
 import regex
-from pandas.core.base import PandasObject
 import numpy as np
 import pandas as pd
 from a_pandas_ex_plode_tool import all_nans_in_df_to_pdNA, qq_s_isnan
+from pandas.core.frame import DataFrame, Series
 
 
 def check_floats(
@@ -72,6 +72,25 @@ def check_floats(
         successfully_converted = True
 
     return df, successfully_converted
+
+
+def series_to_dataframe(
+    df: Union[pd.Series, pd.DataFrame]
+) -> (Union[pd.Series, pd.DataFrame], bool):
+    dataf = df.copy()
+    isseries = False
+    if isinstance(dataf, pd.Series):
+        columnname = dataf.name
+        dataf = dataf.to_frame()
+
+        try:
+            dataf.columns = [columnname]
+        except Exception:
+            dataf.index = [columnname]
+            dataf = dataf.T
+        isseries = True
+
+    return dataf, isseries
 
 
 def optimize_dtypes(
@@ -456,10 +475,11 @@ dtype: object
         Union[pd.DataFrame, pd.Series]
 
     """
-    df = dframe.copy()
-    isseries = isinstance(df, pd.Series)
-    if isseries:
-        df = df.to_frame().copy()
+    # df = dframe.copy()
+    df, isseries = series_to_dataframe(dframe)
+    # isseries = isinstance(df, pd.Series)
+    # if isseries:
+    #     df = df.to_frame().copy()
     df = all_nans_in_df_to_pdNA(
         df,
         include_na_strings=include_na_strings_in_pd_na,
@@ -542,7 +562,11 @@ dtype: object
                         df[col] = df[col].astype(np.float64)
                         converted_successfully = True
 
-                    if mn > np.finfo(np.float16).min and mx < np.finfo(np.float16).max and converted_successfully is False:
+                    if (
+                        mn > np.finfo(np.float16).min
+                        and mx < np.finfo(np.float16).max
+                        and converted_successfully is False
+                    ):
                         df, converted_successfully = check_floats(
                             df=df,
                             col=col,
@@ -665,7 +689,7 @@ dtype: object
             if only_string is True:
                 df[col] = df[col].astype("string")
                 try:
-                    df.loc[df[col].str.contains('<NA>',regex=False), col] = pd.NA
+                    df.loc[df[col].str.contains("<NA>", regex=False), col] = pd.NA
                 except Exception as F:
                     pass
 
@@ -699,12 +723,163 @@ dtype: object
     return df
 
 
-def optimize_only_int(dframe,verbose=True):
-    df=dframe.copy()
+def string_to_mixed_dtypes(
+    dframe: Union[pd.DataFrame, pd.Series]
+) -> Union[pd.Series, pd.DataFrame]:
+    """
+    from a_pandas_ex_less_memory_more_speed import pd_add_less_memory_more_speed
+    import pandas as pd
+
+    liste = ['''"Hello World"''', 'Hello World',
+                                  '''20''',
+             '''20.5''',
+             '''1j''',
+             '''["apple", "banana", "cherry"]''',
+             '''("apple", "banana", "cherry")''',
+             '''{"name" : "John", "age" : 36}''',
+             '''{"apple", "banana", "cherry"}''',
+             '''True''',
+             '''b"Hello"''',
+             '''None''', 'pd.NA', 'np.nan']
+    pd_add_less_memory_more_speed()
+    strdtype1 = pd.DataFrame(liste.copy(), columns=['vari'])
+    dtypes_check1 = strdtype1.vari.map(lambda x: str(type(x)))
+    strdtype2 = pd.DataFrame(liste.copy(), columns=['vari'])
+    strdtype2 = strdtype2.ds_string_to_mixed_dtype()
+    dtypes_check2 = strdtype2.vari.map(lambda x: str(type(x)))
+    for it1, it11, it2, it22 in zip(strdtype1.vari, dtypes_check1, strdtype2.vari, dtypes_check2):
+        print(f'OLD: {it1, it11}')
+        print(f'NEW: {it2, it22}\n')
+
+    OLD: ('"Hello World"', "<class 'str'>")
+    NEW: ('Hello World', "<class 'str'>")
+    OLD: ('Hello World', "<class 'str'>")
+    NEW: ('Hello World', "<class 'str'>")
+    OLD: ('20', "<class 'str'>")
+    NEW: (20, "<class 'int'>")
+    OLD: ('20.5', "<class 'str'>")
+    NEW: (20.5, "<class 'float'>")
+    OLD: ('1j', "<class 'str'>")
+    NEW: (1j, "<class 'complex'>")
+    OLD: ('["apple", "banana", "cherry"]', "<class 'str'>")
+    NEW: (['apple', 'banana', 'cherry'], "<class 'list'>")
+    OLD: ('("apple", "banana", "cherry")', "<class 'str'>")
+    NEW: (('apple', 'banana', 'cherry'), "<class 'tuple'>")
+    OLD: ('{"name" : "John", "age" : 36}', "<class 'str'>")
+    NEW: ({'name': 'John', 'age': 36}, "<class 'dict'>")
+    OLD: ('{"apple", "banana", "cherry"}', "<class 'str'>")
+    NEW: ({'banana', 'cherry', 'apple'}, "<class 'set'>")
+    OLD: ('True', "<class 'str'>")
+    NEW: (True, "<class 'bool'>")
+    OLD: ('b"Hello"', "<class 'str'>")
+    NEW: (b'Hello', "<class 'bytes'>")
+    OLD: ('None', "<class 'str'>")
+    NEW: (<NA>, "<class 'pandas._libs.missing.NAType'>")
+    OLD: ('pd.NA', "<class 'str'>")
+    NEW: (<NA>, "<class 'pandas._libs.missing.NAType'>")
+    OLD: ('np.nan', "<class 'str'>")
+    NEW: (<NA>, "<class 'pandas._libs.missing.NAType'>")
+        Parameters:
+            dframe:Union[pd.DataFrame,pd.Series]
+        Returns
+            Union[pd.DataFrame,pd.Series]
+
+    """
+    df, isseries = series_to_dataframe(dframe)
+
+    def ast_convert(vari):
+        if isinstance(vari, str):
+
+            try:
+                if vari == "None":
+                    return pd.NA
+                return ast.literal_eval(vari)
+            except Exception as fe:
+                return qq_s_isnan(
+                    wert=vari,
+                    nan_back=True,
+                    include_na_strings=True,
+                    include_empty_iters=False,
+                    include_0_len_string=False,
+                    debug=False,
+                )
+
+        return vari
+
     for col in df.columns:
-        if regex.search(r'(?:[iI]nt)|(?:object)',str(df[col].dtype)) is None:
+        if (
+            regex.search(
+                r"(?:category)|(?:string)|(?:object)",
+                str(df[col].dtype),
+                flags=regex.IGNORECASE,
+            )
+            is None
+        ):
             continue
-        if regex.search(r'^\d+$',str(df[col][0])) is None:
+        df[col] = df[col].map(lambda _: ast_convert(_))
+    if isseries:
+        return df[df.columns[0]]
+    return df
+
+
+def optimize_only_int(
+    dframe: Union[pd.DataFrame, pd.Series], verbose: bool = True
+) -> Union[pd.Series, pd.DataFrame]:
+    """
+    If you only want to optimize ints (faster than everything),use this method.
+    df = pd.read_csv("https://raw.githubusercontent.com/pandas-dev/pandas/main/doc/data/titanic.csv")
+    df.Pclass
+
+    0      3
+    1      1
+    2      3
+    3      1
+    4      3
+          ..
+    886    2
+    887    1
+    888    3
+    889    1
+    890    3
+    Name: Pclass, Length: 891, dtype: int64
+
+    df.Pclass.memory_usage()
+    Out[10]: 7256
+
+
+
+    df.Pclass.ds_optimize_int()
+    df.Pclass: Using dtype: np.uint8
+
+    0      3
+    1      1
+    2      3
+    3      1
+    4      3
+          ..
+    886    2
+    887    1
+    888    3
+    889    1
+    890    3
+    Name: Pclass, Length: 891, dtype: uint8
+
+    df.Pclass: Using dtype: np.uint8
+    Out[11]: 1019
+
+        Parameters:
+            dframe:Union[pd.DataFrame,pd.Series]
+            verbose:bool
+                (default = True)
+        Returns
+            Union[pd.DataFrame,pd.Series]
+    """
+    df, isseries = series_to_dataframe(dframe)
+
+    for col in df.columns:
+        if regex.search(r"(?:[iI]nt)|(?:object)", str(df[col].dtype)) is None:
+            continue
+        if regex.search(r"^\d+$", str(df[col][0])) is None:
             continue
         try:
             mx = df[col].max()
@@ -732,21 +907,15 @@ def optimize_only_int(dframe,verbose=True):
                     df[col] = df[col].astype(np.int8)
                     if verbose:
                         print(f"df.{col}: Using dtype: np.int8")
-                elif (
-                        mn > np.iinfo(np.int16).min and mx < np.iinfo(np.int16).max
-                ):
+                elif mn > np.iinfo(np.int16).min and mx < np.iinfo(np.int16).max:
                     df[col] = df[col].astype(np.int16)
                     if verbose:
                         print(f"df.{col}: Using dtype: np.int16")
-                elif (
-                        mn > np.iinfo(np.int32).min and mx < np.iinfo(np.int32).max
-                ):
+                elif mn > np.iinfo(np.int32).min and mx < np.iinfo(np.int32).max:
                     df[col] = df[col].astype(np.int32)
                     if verbose:
                         print(f"df.{col}: Using dtype: np.int32")
-                elif (
-                        mn > np.iinfo(np.int64).min and mx < np.iinfo(np.int64).max
-                ):
+                elif mn > np.iinfo(np.int64).min and mx < np.iinfo(np.int64).max:
                     df[col] = df[col].astype(np.int64)
                     if verbose:
                         print(f"df.{col}: Using dtype: np.int64")
@@ -754,9 +923,15 @@ def optimize_only_int(dframe,verbose=True):
             if verbose:
                 print(f"df.{col}: Using dtype: Int64")
             df[col] = df[col].astype("Int64")
+    if isseries:
+        return df[df.columns[0]]
     return df
 
 
 def pd_add_less_memory_more_speed():
-    PandasObject.ds_reduce_memory_size = optimize_dtypes
-    PandasObject.ds_optimize_int = optimize_only_int
+    DataFrame.ds_reduce_memory_size = optimize_dtypes
+    DataFrame.ds_optimize_int = optimize_only_int
+    DataFrame.ds_string_to_mixed_dtype = string_to_mixed_dtypes
+    Series.ds_reduce_memory_size = optimize_dtypes
+    Series.ds_optimize_int = optimize_only_int
+    Series.ds_string_to_mixed_dtype = string_to_mixed_dtypes
