@@ -613,22 +613,22 @@ dtype: object
             else:
                 try:
                     if mn >= 0:
-                        if mx < 255:
+                        if mx <= 255:
                             df[col] = df[col].astype(np.uint8)
                             if verbose:
 
                                 print(f"df.{col}: Using dtype: np.uint8")
-                        elif mx < 65535:
+                        elif mx <= 65535:
                             df[col] = df[col].astype(np.uint16)
                             if verbose:
 
                                 print(f"df.{col}: Using dtype: np.uint16")
-                        elif mx < 4294967295:
+                        elif mx <= 4294967295:
                             df[col] = df[col].astype(np.uint32)
                             if verbose:
 
                                 print(f"df.{col}: Using dtype: np.uint32")
-                        elif mx >= 4294967295:
+                        elif mx > 4294967295:
                             df[col] = df[col].astype(np.uint64)
                             if verbose:
 
@@ -886,15 +886,15 @@ def optimize_only_int(
             mn = df[col].min()
 
             if mn >= 0:
-                if mx < 255:
+                if mx <= 255:
                     df[col] = df[col].astype(np.uint8)
                     if verbose:
                         print(f"df.{col}: Using dtype: np.uint8")
-                elif mx < 65535:
+                elif mx <= 65535:
                     df[col] = df[col].astype(np.uint16)
                     if verbose:
                         print(f"df.{col}: Using dtype: np.uint16")
-                elif mx < 4294967295:
+                elif mx <= 4294967295:
                     df[col] = df[col].astype(np.uint32)
                     if verbose:
                         print(f"df.{col}: Using dtype: np.uint32")
