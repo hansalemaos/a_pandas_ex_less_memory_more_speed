@@ -14,6 +14,35 @@ pd_add_less_memory_more_speed()
 import pandas as pd
 df = pd.read_csv(    "https://github.com/pandas-dev/pandas/raw/main/doc/data/titanic.csv",)
 df.ds_reduce_memory_size()
+
+```
+
+## Update 2023/05/04
+```python
+
+# to carefully handle callables, iterables and other objects in cells 
+
+df.ds_reduce_memory_size_carefully()
+
+
+    Optimizes the memory usage of a pandas DataFrame or Series by converting data types and reducing memory size.
+
+    Args:
+    df_ (pd.Series | pd.DataFrame): The DataFrame or Series to be optimized.
+    ignore_columns (tuple | list, optional): A tuple or list of column names to ignore during optimization. Defaults to ().
+    not_allowed_to_convert (tuple | list, optional): A tuple or list of modules that should not be converted during optimization. Defaults to ("shapely",).
+    allowed_to_convert (tuple | list, optional): A tuple or list of modules that are allowed to be converted during optimization. Defaults to ("pandas", "numpy").
+    include_empty_iters_in_pd_na (bool, optional): If True, empty iterators will be converted to pd.NA during optimization. Defaults to False.
+    include_0_len_string_in_pd_na (bool, optional): If True, zero-length strings will be converted to pd.NA during optimization. Defaults to False.
+    verbose (bool, optional): If True, print information about the memory usage before and after optimization. Defaults to True.
+
+    Returns:
+    pd.DataFrame | pd.Series: The optimized DataFrame or Series.
+
+    Raises:
+    None.
+    
+    
 ```
 
 ## Update 2022/10/08
